@@ -44,7 +44,7 @@ int get_stcp_fd();
 int socket_tcp_server_init(int port);
 int socket_tcp_server_accept(int fd);
 #endif
-#if defined(TRANS_TCP_SERVER) || defined(UART_COMMBY_SOCKET)
+#if defined(TRANS_TCP_SERVER)
 int socket_tcp_server_recv(int fd);
 void socket_tcp_server_send(frhandler_arg_t *arg, char *data, int len);
 #endif
@@ -57,7 +57,7 @@ void socket_tcp_client_send(char *data, int len);
 void socket_tcp_client_close();
 #endif
 
-#if defined(TRANS_UDP_SERVICE) || defined(DE_TRANS_UDP_STREAM_LOG) || defined(DE_TRANS_UDP_CONTROL)
+#if defined(TRANS_UDP_SERVICE)
 int get_udp_fd();
 int socket_udp_service_init(int port);
 void socket_udp_sendto_with_ipaddr(char *ipaddr, char *data, int len);
@@ -67,14 +67,7 @@ int socket_udp_recvfrom();
 
 void set_deuart_flag(uint8 flag);
 int get_deuart_flag();
-#ifdef DE_TRANS_UDP_STREAM_LOG
-void delog_udp_sendto(char *data, int len);
-#endif
 
-void trans_data_show(de_print_t deprint,
-				struct sockaddr_in *addr, char *data, int len);
-
-void enable_datalog_atime();
 
 #ifdef __cplusplus
 }

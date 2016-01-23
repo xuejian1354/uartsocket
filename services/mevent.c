@@ -7,7 +7,6 @@
 
 #include "mevent.h"
 #include <module/serial.h>
-#include <services/balancer.h>
 
 #ifdef __cplusplus
 extern "C" {

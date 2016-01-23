@@ -16,17 +16,6 @@ extern "C" {
 
 int main(int argc, char **argv)
 {
-#ifdef LOAD_BALANCE_SUPPORT
-	if(serlist_read_from_confile() < 0)
-	{
-		DE_PRINTF(1, "%s()%d : Read \"%s\" fail, please set correct server list file\n",
-			__FUNCTION__, __LINE__, 
-			BALANCE_SERVER_FILE);
-		
-		return -1;
-	}
-#endif
-
 #ifdef READ_CONF_FILE
 	if(conf_read_from_file() < 0)
 	{
@@ -75,7 +64,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#if defined(TRANS_UDP_SERVICE) || defined(DE_TRANS_UDP_STREAM_LOG)
+#if defined(TRANS_UDP_SERVICE)
 	if (socket_udp_service_init(get_udp_port()) < 0)
 	{
 		return -1;

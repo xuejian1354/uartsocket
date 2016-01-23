@@ -40,7 +40,7 @@ extern "C" {
 //max udp session size of udp
 #define TRANS_UDP_SESS_MAX_SIZE		1024
 
-#if defined(TRANS_TCP_SERVER) || defined(UART_COMMBY_SOCKET)
+#if defined(TRANS_TCP_SERVER)
 #define TRANS_TCP_CONN_LIST
 #endif
 
@@ -58,15 +58,6 @@ extern "C" {
 
 //tcp server protocol using port
 #define TRANS_TCPSERVER_PORT	11434
-
-#if defined(DE_TRANS_UDP_STREAM_LOG) || defined(DE_TRANS_UDP_CONTROL)
-#define DEU_UDP_CMD			"deudp"
-#define DEU_TCP_CMD			"detcp"
-#define DEU_POST_CMD		"depost"
-#define DEU_UART_CMD		"deuart"
-#define DE_UDP_PORT			13688
-#define DE_UDP_CTRL_PORT	13689
-#endif
 
 #define GLOBAL_CONF_COMM_PROTOCOL	"comm_protocol"
 #define GLOBAL_CONF_SERIAL_PORT		"serial_dev"
@@ -95,11 +86,6 @@ This macro just support that
 #define MAXSIZE	0x4000
 
 #define IP_ADDR_MAX_SIZE	24
-
-#define GET_UDP_SERVICE_IPADDR(ipaddr)								\
-st(															\
-	sprintf(ipaddr, "%s:%d", get_server_ip(), get_udp_port());	\
-)
 
 #define CMDLINE_SIZE	0x4000
 #define GET_CMD_LINE()	cmdline
@@ -139,7 +125,7 @@ typedef struct
 	int tcp_port;
 #endif
 
-#if defined(TRANS_UDP_SERVICE) || defined(DE_TRANS_UDP_STREAM_LOG) || defined(DE_TRANS_UDP_CONTROL)
+#if defined(TRANS_UDP_SERVICE)
 	int udp_port;
 #endif
 }global_conf_t;
@@ -150,10 +136,6 @@ typedef struct ConfVal
 	char *val;
 	struct ConfVal *next;
 }confval_list;
-
-#ifdef DE_TRANS_UDP_STREAM_LOG
-char *get_de_buf();
-#endif
 
 char *get_serial_dev();
 void set_serial_dev(char *name);

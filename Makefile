@@ -3,7 +3,6 @@ export TOPDIR
 
 $(shell find -name "*[.c][ch]" | xargs chmod -x)
 $(shell find -name "*_config" | xargs chmod -x)
-$(shell find -name "*.txt" | xargs chmod -x)
 
 include $(TOPDIR)/config.mk
 include $(TOPDIR)/lib/library.mk

@@ -20,11 +20,6 @@ extern "C" {
 int serial_open(char *dev);
 int set_serial_params(int fd, 
 	uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
-#ifdef UART_COMMBY_SOCKET
-int get_uart_refd();
-int get_reser_fd();
-int get_reser_accept(int fd);
-#endif
 int serial_init(char *dev);
 int serial_write(char *data, int datalen);
 void *uart_read_func(void *p);

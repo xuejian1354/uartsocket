@@ -16,14 +16,12 @@ extern "C" {
 
 static int maxfd;
 static fd_set global_rdfs;
-static fd_set global_wtfs;
 static sigset_t sigmask;
 
 int select_init()
 {
 	maxfd = 0;
 	FD_ZERO(&global_rdfs);
-	FD_ZERO(&global_wtfs);
 
 	
 	if(sigemptyset(&sigmask) < 0)
@@ -47,42 +45,23 @@ void select_set(int fd)
 	maxfd = maxfd>fd?maxfd:fd;
 }
 
-void select_wtset(int fd)
-{
-	FD_SET(fd, &global_wtfs);
-	maxfd = maxfd>fd?maxfd:fd;
-}
-
 void select_clr(int fd)
 {
 	FD_CLR(fd, &global_rdfs);
 }
 
-void select_wtclr(int fd)
-{
-	FD_CLR(fd, &global_wtfs);
-}
-
 int select_listen()
 {
 	int i, ret;
-#if defined(TRANS_UDP_SERVICE) || defined(DE_TRANS_UDP_STREAM_LOG) || defined(DE_TRANS_UDP_CONTROL)
+#if defined(TRANS_UDP_SERVICE)
 	int udpfd = get_udp_fd();
 #endif
 	
 	fd_set current_rdfs = global_rdfs;
-	fd_set current_wtfs = global_wtfs;
-	ret = pselect(maxfd+1, &current_rdfs, &current_wtfs, NULL, NULL, &sigmask);
+	ret = pselect(maxfd+1, &current_rdfs, NULL, NULL, NULL, &sigmask);
 	if(ret > 0)
 	{
-#ifdef UART_COMMBY_SOCKET
-		int reser_fd = get_reser_fd();
-		if(reser_fd >= 0 && FD_ISSET(reser_fd, &current_rdfs))
-		{
-			return get_reser_accept(reser_fd);
-		}
-#endif
-#if defined(TRANS_UDP_SERVICE) || defined(DE_TRANS_UDP_STREAM_LOG) || defined(DE_TRANS_UDP_CONTROL)
+#if defined(TRANS_UDP_SERVICE)
 		if(FD_ISSET(udpfd, &current_rdfs))
 		{
 			return socket_udp_recvfrom();
@@ -105,7 +84,7 @@ int select_listen()
 			return socket_tcp_server_accept(get_stcp_fd());
 		}
 #endif
-#if defined(TRANS_TCP_SERVER) || defined(UART_COMMBY_SOCKET)
+#if defined(TRANS_TCP_SERVER)
 		for(i=0; i<=maxfd; i++)
 		{
 			if(FD_ISSET(i, &current_rdfs))
@@ -117,11 +96,11 @@ int select_listen()
 	}
 	else if (ret < 0)
 	{
-		DE_PRINTF(0, "%s()%d : pselect error\n", __FUNCTION__, __LINE__);
+		AI_PRINTF("%s()%d : pselect error\n", __FUNCTION__, __LINE__);
 	}
 	else
 	{
-		DE_PRINTF(0, "%s()%d : None fd select\n", __FUNCTION__, __LINE__);
+		AI_PRINTF("%s()%d : None fd select\n", __FUNCTION__, __LINE__);
 	}
 	
 	usleep(10000);

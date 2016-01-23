@@ -65,7 +65,7 @@ int timer_init()
 
 	if(pthread_mutex_init(&timer_lock, NULL) != 0)
     {
-        DE_PRINTF(1, "%s: pthread_mutext_init failed, errno:%d, error:%s\n",
+        AI_PRINTF("%s: pthread_mutext_init failed, errno:%d, error:%s\n",
             __FUNCTION__, errno, strerror(errno));
         return -1;
     }
