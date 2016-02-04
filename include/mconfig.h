@@ -13,20 +13,15 @@
 extern "C" {
 #endif
 
+#define READ_CONF_FILE
 #define THREAD_POOL_SUPPORT
 #define TIMER_SUPPORT
 #define SELECT_SUPPORT
+//#define DAEMON_PROCESS_CREATE
 //#define TRANS_TCP_SERVER
 //#define TRANS_TCP_CLIENT
-//#define TRANS_UDP_SERVICE
-//#define DAEMON_PROCESS_CREATE
-//#define SERIAL_SUPPORT
-//#define READ_CONF_FILE
-
-
-#ifdef READ_CONF_FILE
-#define CONF_FILE	"/etc/uartsocket.conf"
-#endif
+//#define TRANS_UDP_SERVER
+//#define TRANS_UDP_CLIENT
 
 #ifdef __cplusplus
 }

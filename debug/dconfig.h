@@ -13,6 +13,15 @@
 extern "C" {
 #endif
 
+#define THREAD_MAX_NUM	6
+
+//default program name
+#ifndef TARGET_NAME
+#define TARGET_NAME "uartsocket(default)"
+#endif
+
+#define CONF_FILE	"/etc/uartsocket.conf"
+
 #ifdef __cplusplus
 }
 #endif

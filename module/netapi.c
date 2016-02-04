@@ -26,8 +26,6 @@ static int c_tcpfd;
 static struct sockaddr_in m_server_addr;
 #endif
 
-uint8 lwflag = 0;
-
 frhandler_arg_t *get_frhandler_arg_alloc(int fd, struct sockaddr_in *addr, char *buf, int len)
 {
 	if(len > MAXSIZE)

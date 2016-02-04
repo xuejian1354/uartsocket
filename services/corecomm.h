@@ -13,15 +13,10 @@
 extern "C" {
 #endif
 
-#ifdef SELECT_SUPPORT
-
 int select_init();
 void select_set(int fd);
-void select_wtset(int fd);
 void select_clr(int fd);
 int select_listen();
-
-#endif
 
 #ifdef __cplusplus
 }

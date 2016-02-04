@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+#define MAXSIZE		1024
+
 typedef enum
 {
 	DE_UDP_SEND,
