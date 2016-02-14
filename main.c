@@ -42,8 +42,6 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	event_init();
-
 	while(get_end())
 	{
 		sleep(1);

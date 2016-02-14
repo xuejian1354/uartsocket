@@ -26,7 +26,6 @@ int daemon_init();
 int get_daemon_cmdline();
 #endif
 int mach_init();
-void event_init();
 
 #ifdef READ_CONF_FILE
 int conf_read_from_file();

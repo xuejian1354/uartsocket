@@ -151,6 +151,9 @@ void get_read_line(char *line, int len)
 		t_session->port = atoi(fields[4]);
 		t_session->isactive = atoi(fields[5]);
 		t_session->timeout = atoi(fields[6]);
+		t_session->parent = NULL;
+		t_session->refd = -1;
+		t_session->arg = NULL;
 
 		set_session_sn(t_session);
 		if(add_global_session(t_session) != 0)
@@ -248,13 +251,6 @@ int mach_init()
 	}
 
 	return 0;
-}
-
-void event_init()
-{
-#ifdef TIMER_SUPPORT
-	set_heartbeat_check(0, 500);
-#endif
 }
 
 char *get_current_time()

@@ -8,6 +8,7 @@
 #include <termios.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <module/netlist.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,7 @@ static int serial_open(char *dev);
 static int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
 
 static void *uart_read_handler(void *p);
+static void *tcpserver_accept_handler(void *p);
 static void *tcpserver_read_handler(void *p);
 static void *tcpclient_read_handler(void *p);
 static void *udpserver_read_handler(void *p);
@@ -139,6 +141,8 @@ int serial_init(trsess_t *session)
 			t_serial_dev = query_serial_dev(session->dev);
 		}
 
+		m_serial_dev = t_serial_dev;
+
 		if ((t_serial_dev->serial_fd=serial_open(session->dev)) < 0
 			|| set_serial_params(t_serial_dev->serial_fd, 115200, 8, 1, 0) < 0)
 		{
@@ -149,11 +153,12 @@ int serial_init(trsess_t *session)
 		write(t_serial_dev->serial_fd, "(^_^)", 5);	//just enable serial port, no pratical meaning
 
 		pthread_t uartRead;
-		pthread_create(&uartRead, NULL, uart_read_handler, (void *)t_serial_dev->serial_fd);
+		pthread_create(&uartRead, NULL, uart_read_handler, (void *)t_serial_dev);
 	}
 
 	trsess_t *t_session = calloc(1, sizeof(trsess_t));
 	memcpy(t_session, session, sizeof(trsess_t));
+	t_session->parent = m_serial_dev;
 
 	int ret = add_trans_session(&m_serial_dev->session, t_session);
 	if(ret != 0)
@@ -171,7 +176,7 @@ int serial_init(trsess_t *session)
 			{
 				struct sockaddr_in reserver_addr;
 				reserver_addr.sin_family = PF_INET;
-				reserver_addr.sin_port = t_session->port;
+				reserver_addr.sin_port = htons(t_session->port);
 				reserver_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 				if ((t_session->refd = socket(PF_INET, SOCK_STREAM, 0)) < 0
@@ -183,8 +188,8 @@ int serial_init(trsess_t *session)
 
 				listen(t_session->refd, 5);
 
-				pthread_t reserRead;
-				pthread_create(&reserRead, NULL, tcpserver_read_handler, (void *)t_session->refd);
+				pthread_t reserAccept;
+				pthread_create(&reserAccept, NULL, tcpserver_accept_handler, (void *)t_session);
 			}
 			else if(t_session->mode == UM_SLAVE)
 			{}
@@ -203,21 +208,85 @@ int serial_init(trsess_t *session)
 
 void *uart_read_handler(void *p)
 {
-	unsigned char rbuf[64];
+	unsigned char rbuf[2048];
     int rlen;
 
-	int serial_fd = (int)p;
+	serial_dev_t *m_serial_dev = (serial_dev_t *)p;
 	
     while(1)
     {
         memset(rbuf, 0, sizeof(rbuf));
-    	rlen = read(serial_fd, rbuf, sizeof(rbuf));
-		AI_PRINTF("Serial read, len=%s, %s\n", rlen, rbuf);
+    	rlen = read(m_serial_dev->serial_fd, rbuf, sizeof(rbuf));
+		trsess_t *m_session = m_serial_dev->session;
+		while(m_session != NULL)
+		{
+			if(m_session->tocol == UT_TCP && m_session->mode == UM_MAIN)
+			{
+				tcp_conn_t *t_conn = (tcp_conn_t *)m_session->arg;
+				while(t_conn != NULL)
+				{
+					write(t_conn->fd, rbuf, rlen);
+					t_conn = t_conn->next;
+				}
+			}
+
+			m_session = m_session->next;
+		}
     }
 }
 
+void *tcpserver_accept_handler(void *p)
+{
+	int rw;
+	struct sockaddr_in client_addr;
+	socklen_t len = sizeof(client_addr);
+
+	trsess_t *m_session = (trsess_t *)p;
+
+	while(1)
+	{
+		rw = accept(m_session->refd, (struct sockaddr *)&client_addr, &len);
+
+		tcp_conn_t *t_conn = calloc(1, sizeof(tcp_conn_t));
+		t_conn->fd = rw;
+		t_conn->client_addr = client_addr;
+		t_conn->parent = p;
+		t_conn->next = NULL;
+
+		if(addto_tcpconn_list((tcp_conn_t **)&m_session->arg, t_conn) != 0)
+		{
+			free(t_conn);
+			t_conn = queryfrom_tcpconn_list((tcp_conn_t *)m_session->arg, rw);
+		}
+		
+		pthread_t reserRead;
+		pthread_create(&reserRead, NULL, tcpserver_read_handler, (void *)t_conn);
+	}
+}
+
 void *tcpserver_read_handler(void *p)
-{}
+{
+	int nbytes;
+	char buf[2048];
+
+	tcp_conn_t *m_conn = (tcp_conn_t *)p;
+	int isStart = 1;
+
+	while(isStart)
+	{
+		memset(buf, 0, sizeof(buf));
+	   	if ((nbytes = recv(m_conn->fd, buf, sizeof(buf), 0)) <= 0)
+	   	{
+	      	close(m_conn->fd);
+			delfrom_tcpconn_list((tcp_conn_t **)&((trsess_t *)m_conn->parent)->arg, m_conn->fd);
+			isStart = 0;
+		}
+		else
+		{
+			write(((serial_dev_t *)((trsess_t *)m_conn->parent)->parent)->serial_fd, buf, nbytes);
+		}
+	}
+}
 
 void *tcpclient_read_handler(void *p)
 {}

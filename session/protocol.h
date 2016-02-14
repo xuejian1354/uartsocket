@@ -37,6 +37,8 @@ typedef struct TRSESS
 	int isactive;
 	int timeout;
 	int refd;
+	void *parent;
+	void *arg;
 	struct TRSESS *next;
 }trsess_t;
 
@@ -54,7 +56,7 @@ trsess_t *query_global_session(char *sn);
 int del_global_session(char *sn);
 int add_trans_session(trsess_t **g_session, trsess_t *session);
 trsess_t *query_trans_session(trsess_t *g_session, char *sn);
-int del_trans_session(trsess_t *g_session, char *sn);
+int del_trans_session(trsess_t **g_session, char *sn);
 void session_free(trsess_t *g_session);
 
 int transcomm_thread_create(trsess_t *session);

@@ -106,7 +106,7 @@ trsess_t *query_global_session(char *sn)
 
 int del_global_session(char *sn)
 {
-	return del_trans_session(g_sess, sn);
+	return del_trans_session(&g_sess, sn);
 }
 
 int add_trans_session(trsess_t **g_session, trsess_t *session)
@@ -139,6 +139,7 @@ int add_trans_session(trsess_t **g_session, trsess_t *session)
 			t_sess->ip = session->ip;
 			t_sess->port = session->port;
 			t_sess->timeout = session->timeout;
+			t_sess->parent = session->parent;
 
 			if(pre_sess != NULL)
 			{
@@ -176,10 +177,10 @@ trsess_t *query_trans_session(trsess_t *g_session, char *sn)
 	return NULL;
 }
 
-int del_trans_session(trsess_t *g_session, char *sn)
+int del_trans_session(trsess_t **g_session, char *sn)
 {
 	trsess_t *pre_sess = NULL;
-	trsess_t *t_sess = g_session;
+	trsess_t *t_sess = *g_session;
 
 	while(t_sess != NULL)
 	{
@@ -196,7 +197,7 @@ int del_trans_session(trsess_t *g_session, char *sn)
 			}
 			else
 			{
-				g_session = t_sess->next;
+				*g_session = t_sess->next;
 			}
 
 			free(t_sess);
