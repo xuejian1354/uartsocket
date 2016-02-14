@@ -5,19 +5,18 @@ $(shell find -name "*[.c][ch]" | xargs chmod -x)
 $(shell find -name "*_config" | xargs chmod -x)
 
 include $(TOPDIR)/config.mk
-include $(TOPDIR)/lib/library.mk
 
 TARGET_NAME:=uartsocket
 TARGET:=$(addprefix $(DIR),$(TARGET_NAME))
 export TARGET
 
-INCLUDE +=-I$(TOPDIR)/include -I$(TOPDIR)/lib
+INCLUDE +=-I$(TOPDIR)/include
 ifneq ($(DIR),)
 INCLUDE += -I$(TOPDIR)/$(DIR)include
 endif
 
-STD_LDFLAGS:=-lpthread
-export INCLUDE STD_LDFLAGS
+LDFLAGS:=-lpthread
+export INCLUDE LDFLAGS
 
 TARGET_DMACRO:=-DTARGET_NAME=\"$(TARGET_NAME)\"
 include mconfig/uartsocket_config
@@ -54,9 +53,9 @@ all:$(TARGET)
 
 include $(TOPDIR)/include/include.mk
 
-$(TARGET):$(inc_deps) $(inc_dirs_deps) target_comshow $(TARGET_OBJS) libs
+$(TARGET):$(inc_deps) $(inc_dirs_deps) target_comshow $(TARGET_OBJS)
 	$(call echocmd,TAR,$@, \
-	  $(TARGET_CC) $(TARGET_DMACRO) $(INCLUDE) $(LDPATH) $(TARGET_LDPATH) -O2 -o $@ $(TARGET_OBJS) $(LDFLAGS) $(TARGET_LDFLAG)) $(STD_LDFLAGS)
+	  $(TARGET_CC) $(TARGET_DMACRO) $(INCLUDE) $(LDPATH) $(TARGET_LDPATH) -O2 -o $@ $(TARGET_OBJS) $(LDFLAGS) $(TARGET_LDFLAG))
 	@$(TARGET_STRIP) $@
 
 $(DIR)%.o:%.c $(ALL_HEARDS) mconfig/uartsocket_config
@@ -68,8 +67,6 @@ $(DIR)%.o:%.cc $(ALL_HEARDS) mconfig/uartsocket_config
 	@if [ ! -d "$(dir $@)" ]; then mkdir -p $(dir $@); fi;
 	$(call echocmd,CXX,$@, \
 	  $(TARGET_CXX) $(TARGET_DMACRO) $(INCLUDE) -O2 -o $@ -c $<)
-libs:
-	@make -C $(TOPDIR)/lib $(patsubst %,$(TOPDIR)/$(DIR)lib/%.a,$(patsubst %.a,%,$(LDLIBS)))
 
 target_comshow:
 	@echo ""

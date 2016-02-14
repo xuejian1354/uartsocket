@@ -36,6 +36,8 @@ typedef struct TRSESS
 	int port;
 	int isactive;
 	int timeout;
+	int refd;
+	struct TRSESS *next;
 }trsess_t;
 
 utocol_t get_utocol_fromstr(char* s);
@@ -47,8 +49,17 @@ char get_umode_tochr(umode_t mode);
 void set_session_sn(trsess_t *session);
 
 trsess_t *get_global_session();
-int add_trans_session(trsess_t *session);
-int del_trans_session(char *sn);
+int add_global_session(trsess_t *session);
+trsess_t *query_global_session(char *sn);
+int del_global_session(char *sn);
+int add_trans_session(trsess_t **g_session, trsess_t *session);
+trsess_t *query_trans_session(trsess_t *g_session, char *sn);
+int del_trans_session(trsess_t *g_session, char *sn);
+void session_free(trsess_t *g_session);
+
+int transcomm_thread_create(trsess_t *session);
+
+void trsess_print(trsess_t *session);
 
 #ifdef __cplusplus
 }

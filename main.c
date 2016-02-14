@@ -5,10 +5,7 @@
  *
  */
 #include <services/globals.h>
-#include <services/etimer.h>
-#include <services/corecomm.h>
 #include <module/serial.h>
-#include <module/netapi.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +25,8 @@ int main(int argc, char **argv)
 	}
 #endif
 
+	process_signal_register();
+
 	AI_PRINTF("%s Start!\n", TARGET_NAME);
 
 #ifdef DAEMON_PROCESS_CREATE
@@ -38,27 +37,6 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#ifdef THREAD_POOL_SUPPORT
-	if (tpool_create(THREAD_MAX_NUM) < 0)
-	{
-		return -1;
-	}
-#endif
-
-#ifdef TIMER_SUPPORT
-	if(timer_init() < 0)
-	{
-		return -1;
-	}
-#endif
-
-#ifdef SELECT_SUPPORT
-	if(select_init() < 0)
-	{
-		return -1;
-	}
-#endif
-
 	if(mach_init() < 0)
 	{
 		return -1;
@@ -66,15 +44,12 @@ int main(int argc, char **argv)
 
 	event_init();
 
-	while(1)
+	while(get_end())
 	{
-#ifdef SELECT_SUPPORT
-		select_listen();
-#else
-		usleep(10000);
-#endif
+		sleep(1);
 	}
 
+	AI_PRINTF("%s End!\n", TARGET_NAME);
 	return 0;
 }
 

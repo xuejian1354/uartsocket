@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#define THREAD_MAX_NUM	6
+#define THREAD_MAX_NUM	4
 
 //default program name
 #ifndef TARGET_NAME

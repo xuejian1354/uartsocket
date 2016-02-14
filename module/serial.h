@@ -8,23 +8,27 @@
 #define __SERIAL_H__
 
 #include <services/globals.h>
+#include <session/protocol.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef SERIAL_SUPPORT
+typedef struct SerialDev
+{
+	char dev[64];
+	int serial_fd;
+	int num;
+	trsess_t *session;
+	struct SerialDev *next;
+}serial_dev_t;
 
-#define SERIAL_MAX_LEN 128
+int add_serial_dev(serial_dev_t *t_serial_dev);
+serial_dev_t *query_serial_dev(char *dev);
+int del_serial_dev(char *dev);
+void serial_dev_free();
 
-int serial_open(char *dev);
-int set_serial_params(int fd, 
-	uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
-int serial_init(char *dev);
-int serial_write(char *data, int datalen);
-void *uart_read_func(void *p);
-
-#endif
+int serial_init(trsess_t *session);
 
 #ifdef __cplusplus
 }

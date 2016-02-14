@@ -10,16 +10,15 @@
 #include <debug/dconfig.h>
 #include <debug/dlog.h>
 #include <signal.h>
-#include <tpool.h>
-#include <strings_t.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <mincode.h>
 #include "time.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int get_end();
 
 int start_params(int argc, char **argv);
 #ifdef DAEMON_PROCESS_CREATE
@@ -32,6 +31,8 @@ void event_init();
 #ifdef READ_CONF_FILE
 int conf_read_from_file();
 #endif
+
+void process_signal_register();
 
 char *get_current_time();
 char *get_system_time();

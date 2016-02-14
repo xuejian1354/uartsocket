@@ -7,9 +7,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <dirent.h>
+#include <signal.h>
 #include <arpa/inet.h>
-#include <module/netapi.h>
-#include <services/mevent.h>
 #include <session/protocol.h>
 
 #ifdef __cplusplus
@@ -18,10 +17,18 @@ extern "C" {
 
 static char current_time[64];
 static char conf_file[128] = {0};
+static int end_flag = 1;
+
+static void end_handler(int sig);
 
 #ifdef READ_CONF_FILE
 void get_read_line(char *line, int len);
 #endif
+
+int get_end()
+{
+	return end_flag;
+}
 
 int start_params(int argc, char **argv)
 {
@@ -68,6 +75,8 @@ int conf_read_from_file()
 			get_read_line(buf, strlen(buf));	
 			memset(buf, 0, sizeof(buf));
 		}
+
+		fclose(fp);
 	}
 	else
 	{
@@ -134,21 +143,49 @@ void get_read_line(char *line, int len)
 
 	if(flen >= FIELDS_LEN)
 	{
-		trsess_t t_session = {0};
-		strcpy(t_session.dev, fields[0]);
-		t_session.tocol = get_utocol_fromstr(fields[1]);
-		t_session.mode= get_umode_fromchr(fields[2][0]);
-		t_session.ip = inet_addr(fields[3]);
-		t_session.port = atoi(fields[4]);
-		t_session.isactive = atoi(fields[5]);
-		t_session.timeout = atoi(fields[6]);
+		trsess_t *t_session = calloc(1, sizeof(trsess_t));
+		strcpy(t_session->dev, fields[0]);
+		t_session->tocol = get_utocol_fromstr(fields[1]);
+		t_session->mode= get_umode_fromchr(fields[2][0]);
+		t_session->ip = inet_addr(fields[3]);
+		t_session->port = atoi(fields[4]);
+		t_session->isactive = atoi(fields[5]);
+		t_session->timeout = atoi(fields[6]);
 
-		set_session_sn(&t_session);
-
-		add_trans_session(&t_session);
+		set_session_sn(t_session);
+		if(add_global_session(t_session) != 0)
+		{
+			free(t_session);
+		}
 	}
 }
 #endif
+
+void process_signal_register()
+{
+	 signal(SIGINT, end_handler);
+	 signal(SIGTSTP, end_handler);
+}
+
+void end_handler(int sig)
+{
+	switch(sig)
+	{
+	case SIGINT:
+		AI_PRINTF(" SIGINT\t");
+		break;
+
+	case SIGTSTP:
+		AI_PRINTF(" SIGTSTP\t");
+		break;
+	}
+
+	AI_PRINTF("\n");
+
+	session_free(get_global_session());
+
+	end_flag = 0;
+}
 
 #ifdef DAEMON_PROCESS_CREATE
 static int daemon_cmdline_flag = 0;
@@ -201,6 +238,15 @@ int get_daemon_cmdline()
 
 int mach_init()
 {
+	trsess_t *g_session = get_global_session();
+	trsess_t *t_session = g_session;
+
+	while(t_session != NULL)
+	{
+		transcomm_thread_create(t_session);
+		t_session = t_session->next;
+	}
+
 	return 0;
 }
 

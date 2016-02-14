@@ -8,25 +8,226 @@
 #include <termios.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <module/netapi.h>
-#include <module/netlist.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef SERIAL_SUPPORT
+serial_dev_t *g_serial_dev;
 
-static int serial_fd;
+static int serial_open(char *dev);
+static int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
 
-static int isStart = 1;
-static int mcount = 0;		//match frame head
-static int step = 0;       //0,head; 1,fixed data; 2,data packet;
-static int fixLen = 3;		//location when copy
-static int dataLen = 0;
-static uint8 tmpFrame[SERIAL_MAX_LEN]={0};
+static void *uart_read_handler(void *p);
+static void *tcpserver_read_handler(void *p);
+static void *tcpclient_read_handler(void *p);
+static void *udpserver_read_handler(void *p);
+static void *udpclient_read_handler(void *p);
 
-//Open Serial Port
+int add_serial_dev(serial_dev_t *t_serial_dev)
+{
+	serial_dev_t *pre_dev = NULL;
+	serial_dev_t *t_dev = g_serial_dev;
+
+	if(t_serial_dev == NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		t_serial_dev->next = NULL;
+	}
+
+	while(t_dev != NULL)
+	{
+		if(strcmp(t_dev->dev, t_serial_dev->dev))
+		{
+			pre_dev = t_dev;
+			t_dev = t_dev->next;
+		}
+		else
+		{
+			return 1;
+		}
+	}
+
+	t_serial_dev->next = g_serial_dev;
+	g_serial_dev = t_serial_dev;
+
+	return 0;
+}
+
+serial_dev_t *query_serial_dev(char *dev)
+{
+	serial_dev_t *t_sesial_dev = g_serial_dev;
+
+	while(t_sesial_dev != NULL)
+	{
+		if(strcmp(t_sesial_dev->dev, dev))
+		{
+			t_sesial_dev = t_sesial_dev->next;
+		}
+		else
+		{
+			return t_sesial_dev;
+		}
+	}
+
+	return NULL;
+}
+
+int del_serial_dev(char *dev)
+{
+	serial_dev_t *pre_serial_dev = NULL;
+	serial_dev_t *t_serial_dev = g_serial_dev;
+
+	while(t_serial_dev != NULL)
+	{
+		if(strcmp(t_serial_dev->dev, dev))
+		{
+			pre_serial_dev = t_serial_dev;
+			t_serial_dev = t_serial_dev->next;
+		}
+		else
+		{
+			if(pre_serial_dev != NULL)
+			{
+				pre_serial_dev->next = t_serial_dev->next;
+			}
+			else
+			{
+				g_serial_dev = t_serial_dev->next;
+			}
+
+			free(t_serial_dev);
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+void serial_dev_free()
+{
+	serial_dev_t *m_serial_dev = g_serial_dev;
+	while(m_serial_dev != NULL)
+	{
+		serial_dev_t *t_serial_dev = m_serial_dev;
+		m_serial_dev = m_serial_dev->next;
+		session_free(t_serial_dev->session);
+		free(t_serial_dev);
+	}
+}
+
+int serial_init(trsess_t *session)
+{
+	if(session == NULL)
+	{
+		return -1;
+	}
+
+	serial_dev_t *m_serial_dev = query_serial_dev(session->dev);
+	if(m_serial_dev == NULL)
+	{
+		serial_dev_t *t_serial_dev = calloc(1, sizeof(serial_dev_t));
+		strcpy(t_serial_dev->dev, session->dev);
+		t_serial_dev->num = 0;
+		t_serial_dev->session = NULL;
+		if(add_serial_dev(t_serial_dev) != 0)
+		{
+			free(t_serial_dev);
+			t_serial_dev = query_serial_dev(session->dev);
+		}
+
+		if ((t_serial_dev->serial_fd=serial_open(session->dev)) < 0
+			|| set_serial_params(t_serial_dev->serial_fd, 115200, 8, 1, 0) < 0)
+		{
+			del_serial_dev(session->dev);
+			return -2;
+		}
+
+		write(t_serial_dev->serial_fd, "(^_^)", 5);	//just enable serial port, no pratical meaning
+
+		pthread_t uartRead;
+		pthread_create(&uartRead, NULL, uart_read_handler, (void *)t_serial_dev->serial_fd);
+	}
+
+	trsess_t *t_session = calloc(1, sizeof(trsess_t));
+	memcpy(t_session, session, sizeof(trsess_t));
+
+	int ret = add_trans_session(&m_serial_dev->session, t_session);
+	if(ret != 0)
+	{
+		free(t_session);
+		t_session = query_trans_session(m_serial_dev->session, session->sn);
+	}
+	else
+	{
+		m_serial_dev->num++;
+
+		if(t_session->tocol == UT_TCP)
+		{
+			if(t_session->mode == UM_MAIN)
+			{
+				struct sockaddr_in reserver_addr;
+				reserver_addr.sin_family = PF_INET;
+				reserver_addr.sin_port = t_session->port;
+				reserver_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+				if ((t_session->refd = socket(PF_INET, SOCK_STREAM, 0)) < 0
+					|| bind(t_session->refd, (struct sockaddr *)&reserver_addr, sizeof(struct sockaddr)) < 0)
+				{
+					perror("reser socket fail");
+					return -3;
+				}
+
+				listen(t_session->refd, 5);
+
+				pthread_t reserRead;
+				pthread_create(&reserRead, NULL, tcpserver_read_handler, (void *)t_session->refd);
+			}
+			else if(t_session->mode == UM_SLAVE)
+			{}
+		}
+		else if(t_session->tocol == UT_UDP)
+		{
+			if(t_session->mode == UM_MAIN)
+			{}
+			else if(t_session->mode == UM_SLAVE)
+			{}
+		}
+	}
+
+	return 0;
+}
+
+void *uart_read_handler(void *p)
+{
+	unsigned char rbuf[64];
+    int rlen;
+
+	int serial_fd = (int)p;
+	
+    while(1)
+    {
+        memset(rbuf, 0, sizeof(rbuf));
+    	rlen = read(serial_fd, rbuf, sizeof(rbuf));
+		AI_PRINTF("Serial read, len=%s, %s\n", rlen, rbuf);
+    }
+}
+
+void *tcpserver_read_handler(void *p)
+{}
+
+void *tcpclient_read_handler(void *p)
+{}
+
+void *udpserver_read_handler(void *p)
+{}
+
+void *udpclient_read_handler(void *p)
+{}
+
 int serial_open(char *dev)
 {
 	int fd;
@@ -46,8 +247,6 @@ int serial_open(char *dev)
     return fd;
 }
 
-
-//Set Serial Port Params
 int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity)
 {
     int iSpeed = 0;
@@ -155,193 +354,6 @@ int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 
     tcflush(fd, TCIFLUSH);
     return 0;
 }
-
-int serial_init(char *dev)
-{
-	int fd;
-	int ret;
-
-	if ((fd=serial_open(dev)) < 0)
-	{
-		return -1;
-	}
-	serial_fd = fd;
-
-	if (set_serial_params(fd, 115200, 8, 1, 0) < 0)
-	{
-		return -2;
-	}
-
-	ret = write(fd, "(^_^)", 5);	//just enable serial port, no pratical meaning
-
-	pthread_t uartRead;
-	pthread_create(&uartRead, NULL, uart_read_func, NULL);
-
-	return 0;
-}
-
-int serial_write(char *data, int datalen)
-{
-	return write(serial_fd, data, datalen);
-}
-
-void *uart_read_func(void *p)
-{
-	unsigned char rbuf[64] = {0};
-    int rlen = 0;
-    int i = 0;
-	
-    while(isStart)
-    {
-        i = 0;
-        memset(rbuf, 0, sizeof(rbuf));
-		rlen = read(serial_fd, rbuf, sizeof(rbuf));
-
-        while(i < rlen)
-        {
-            if(0 == step)
-            {
-                switch(rbuf[i])
-                {
-                case 'U':
-				case 'D':
-                    if(0 == mcount)
-					{
-						tmpFrame[0] = rbuf[i];
-						mcount++;
-                    }
-                    else
-						mcount=0;
-                    break;
-
-                case 'C':
-				case 'O':
-				case 'H':
-				case 'R':
-                    if(1 == mcount)
-					{
-						tmpFrame[1] = rbuf[i];
-						mcount++;
-                    }
-                    else
-						mcount=0;
-                    break;
-
-                case ':':
-					if(1 == mcount)
-					{
-                        step = 1;
-						tmpFrame[1] = 'E';
-						mcount++;
-						tmpFrame[2] = rbuf[i];
-						mcount++;
-                    }
-                    if(2 == mcount)
-					{
-                        step = 1;
-						mcount++;
-                        tmpFrame[2] = rbuf[i];
-                    }
-					else
-						mcount = 0;
-					break;
-                
-                default:
-                    if(0 != mcount) 
-                    {
-						mcount=0;
-                    }
-                    break;
-                }
-            }
-            else if(1 == step) 
-            {
-				if(fixLen > SERIAL_MAX_LEN)
-				{
-					fixLen = 3;
-                	step = 0;
-					mcount = 0;
-					break;
-				}
-				
-                *(tmpFrame+fixLen++) = rbuf[i];
-                switch(rbuf[i])
-                {
-                case 0x3A:
-                    if(3 == mcount)
-					{
-						mcount++;
-                    }
-                    else  
-						mcount=3;
-                    break;
-
-                case 0x4F:
-                    if(4 == mcount)
-					{
-						mcount++;
-                    }
-                    else
-						mcount=3;
-                    break;
-
-                case 0x0D:
-                    if(5 == mcount)
-					{
-                        mcount++;
-                    }
-					else
-						mcount=3;
-					break;
-
-				case 0x0A:
-					if(6 == mcount)
-					{
-						step = 2;
-						goto serial_update;
-					}
-					
-                default:
-                    if(3 != mcount) 
-                    {
-						mcount=3;
-                    }
-                    break;
-                }
-            }
-            else if(2 == step)
-            {
-serial_update:	
-				dataLen = fixLen;
-	            fixLen = 3;
-                step = 0;
-				mcount = 0;
-
-				if(!memcmp("DE:", tmpFrame, 3))
-				{
-					 uint8 mFrame[SERIAL_MAX_LEN]={0};
-					 memcpy(mFrame, "D:", 2);
-					 memcpy(mFrame+2, tmpFrame+3, dataLen-3);
-					 memcpy(tmpFrame, mFrame, dataLen-1);
-					 tmpFrame[dataLen] = 0;
-					 dataLen--;
-				}
-				AI_PRINTF("%s\nserial read:%s\n", get_time_head(), tmpFrame);
-				//PRINT_HEX(tmpFrame, dataLen);
-				frhandler_arg_t *frarg;
-				frarg = get_frhandler_arg_alloc(serial_fd, NULL, (char *)tmpFrame, dataLen);
-#ifdef THREAD_POOL_SUPPORT
-				//tpool_add_work(analysis_zdev_frame, frarg, TPOOL_LOCK);
-#else
-				//analysis_zdev_frame(frarg);
-#endif
-				memset(tmpFrame, 0, sizeof(tmpFrame));
-            }
-            i++;
-        }
-    }
-}
-#endif
 
 #ifdef __cplusplus
 }

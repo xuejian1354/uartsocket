@@ -14,9 +14,6 @@ extern "C" {
 #endif
 
 #define READ_CONF_FILE
-#define THREAD_POOL_SUPPORT
-#define TIMER_SUPPORT
-#define SELECT_SUPPORT
 //#define DAEMON_PROCESS_CREATE
 //#define TRANS_TCP_SERVER
 //#define TRANS_TCP_CLIENT

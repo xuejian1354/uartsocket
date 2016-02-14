@@ -1,1 +1,1 @@
-TARGET_SRCS :=serial.c netapi.c netlist.c
+TARGET_SRCS :=serial.c
