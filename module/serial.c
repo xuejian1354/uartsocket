@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-serial_dev_t *g_serial_dev;
+serial_dev_t *g_serial_dev = NULL;
 
 static int serial_open(char *dev);
 static int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
@@ -25,6 +25,11 @@ static void *tcpserver_read_handler(void *p);
 static void *tcpclient_read_handler(void *p);
 static void *udpserver_read_handler(void *p);
 static void *udpclient_read_handler(void *p);
+
+serial_dev_t *get_serial_dev()
+{
+	return g_serial_dev;
+}
 
 int add_serial_dev(serial_dev_t *t_serial_dev)
 {
@@ -119,6 +124,8 @@ void serial_dev_free()
 		session_free(t_serial_dev->session);
 		free(t_serial_dev);
 	}
+
+	g_serial_dev = NULL;
 }
 
 int serial_init(trsess_t *session)
@@ -133,6 +140,7 @@ int serial_init(trsess_t *session)
 	{
 		serial_dev_t *t_serial_dev = calloc(1, sizeof(serial_dev_t));
 		strcpy(t_serial_dev->dev, session->dev);
+		t_serial_dev->speed = session->speed;
 		t_serial_dev->num = 0;
 		t_serial_dev->session = NULL;
 		if(add_serial_dev(t_serial_dev) != 0)
@@ -144,7 +152,7 @@ int serial_init(trsess_t *session)
 		m_serial_dev = t_serial_dev;
 
 		if ((t_serial_dev->serial_fd=serial_open(session->dev)) < 0
-			|| set_serial_params(t_serial_dev->serial_fd, 115200, 8, 1, 0) < 0)
+			|| set_serial_params(t_serial_dev->serial_fd, t_serial_dev->speed, 8, 1, 0) < 0)
 		{
 			del_serial_dev(session->dev);
 			return -2;

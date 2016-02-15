@@ -6,6 +6,7 @@
  */
 
 #include "protocol.h"
+#include <module/netlist.h>
 
 static trsess_t *g_sess = NULL;
 
@@ -134,6 +135,7 @@ int add_trans_session(trsess_t **g_session, trsess_t *session)
 		else
 		{
 			strcpy(t_sess->dev, session->dev);
+			t_sess->speed = session->speed;
 			t_sess->tocol = session->tocol;
 			t_sess->mode = session->mode;
 			t_sess->ip = session->ip;
@@ -216,6 +218,18 @@ void session_free(trsess_t *g_session)
 		//trsess_print(m_session);
 		trsess_t *t_session = m_session;
 		m_session = m_session->next;
+
+		if(t_session->tocol == UT_TCP && t_session->mode == UM_MAIN)
+		{
+			tcp_conn_t *t_conn = (tcp_conn_t *)t_session->arg;
+			while(t_conn != NULL)
+			{
+				tcp_conn_t *pre_conn = t_conn;
+				t_conn = t_conn->next;
+				free(pre_conn);
+			}
+		}
+
 		free(t_session);
 	}
 }

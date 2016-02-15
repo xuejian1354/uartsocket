@@ -42,9 +42,16 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	while(get_end())
+	if(get_serial_dev() != NULL)
 	{
-		sleep(1);
+		while(get_end())
+		{
+			sleep(1);
+		}
+	}
+	else
+	{
+		AI_PRINTF("No serial device enable\n");
 	}
 
 	AI_PRINTF("%s End!\n", TARGET_NAME);

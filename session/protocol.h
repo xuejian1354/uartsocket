@@ -30,6 +30,7 @@ typedef struct TRSESS
 {
 	char sn[32];
 	char dev[64];
+	int speed;
 	utocol_t tocol;
 	umode_t mode;
 	uint32 ip;

@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 #include <session/protocol.h>
+#include <module/serial.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,7 +97,7 @@ void get_read_line(char *line, int len)
 	int pos_h, pos_t;
 	int isset_h = 0;
 
-#define FIELDS_LEN	7
+#define FIELDS_LEN	3
 
 	char fields[FIELDS_LEN][128] = {0};
 	char flen = 0;
@@ -145,12 +146,13 @@ void get_read_line(char *line, int len)
 	{
 		trsess_t *t_session = calloc(1, sizeof(trsess_t));
 		strcpy(t_session->dev, fields[0]);
-		t_session->tocol = get_utocol_fromstr(fields[1]);
-		t_session->mode= get_umode_fromchr(fields[2][0]);
-		t_session->ip = inet_addr(fields[3]);
-		t_session->port = atoi(fields[4]);
-		t_session->isactive = atoi(fields[5]);
-		t_session->timeout = atoi(fields[6]);
+		t_session->speed = atoi(fields[1]);
+		t_session->tocol = UT_TCP;
+		t_session->mode= UM_MAIN;
+		t_session->ip = inet_addr("0.0.0.0");
+		t_session->port = atoi(fields[2]);
+		t_session->isactive = 1;
+		t_session->timeout = 0;
 		t_session->parent = NULL;
 		t_session->refd = -1;
 		t_session->arg = NULL;
@@ -186,6 +188,7 @@ void end_handler(int sig)
 	AI_PRINTF("\n");
 
 	session_free(get_global_session());
+	serial_dev_free();
 
 	end_flag = 0;
 }

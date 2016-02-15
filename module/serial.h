@@ -17,12 +17,14 @@ extern "C" {
 typedef struct SerialDev
 {
 	char dev[64];
+	int speed;
 	int serial_fd;
 	int num;
 	trsess_t *session;
 	struct SerialDev *next;
 }serial_dev_t;
 
+serial_dev_t *get_serial_dev();
 int add_serial_dev(serial_dev_t *t_serial_dev);
 serial_dev_t *query_serial_dev(char *dev);
 int del_serial_dev(char *dev);
