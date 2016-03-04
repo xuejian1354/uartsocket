@@ -69,14 +69,19 @@ $(DIR)%.o:%.cc $(ALL_HEARDS) mconfig/uartsocket_config
 	  $(TARGET_CXX) $(TARGET_DMACRO) $(INCLUDE) -O2 -o $@ -c $<)
 
 target_comshow:
-	@echo ""
 	@echo ===========================================================
 	@echo **compile $(TARGET_NAME): $(TARGET_CC)
 	@echo ===========================================================
 
+alls:all
+	make -C tests
+
 clean:
 	(find -name "*.[oa]" | xargs $(RM)) && $(RM) $(TARGET)
 	$(RM) -r $(patsubst %/,$(DIR)include/%,debug/ $(dir $(shell ls */transconn.mk))) $(inc_dirs_deps) $(DIR)
+
+distclean:clean
+	make -C tests clean
 
 help:
 	@echo "help:"

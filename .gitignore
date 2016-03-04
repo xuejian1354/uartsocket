@@ -9,3 +9,4 @@ include/*
 !include/mtypes.h
 
 bin/
+tests/*test

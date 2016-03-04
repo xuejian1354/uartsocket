@@ -1,6 +1,6 @@
 ifneq ($(WHOLE_BUILD),1)
 ifneq ("$(origin prefix)", "command line")
-  prefix :=
+  prefix := mipsel-openwrt-linux-
 endif
 
 ifneq ("$(origin dir)", "command line")
@@ -28,7 +28,7 @@ export TARGET_CC TARGET_CXX TARGET_LD TARGET_AR TARGET_STRIP
 
 all:
 
-WHOLE_BUILD := 1
+WHOLE_BUILD :=1
 export WHOLE_BUILD
 endif
 
