@@ -106,12 +106,14 @@ static ssize_t sock_asyn_read(sock_handle_t *h, void *buf, size_t count, int tim
 				if (!(save.events & EPOLLIN))
 					return 0;
 				len = recv(h->fd, buf, count, 0);
-				if (len < 0)
+				if (len < 0) {
 					if (errno == EAGAIN || errno == EWOULDBLOCK)
 						len = 0;
-				/** FIXME: it may be useful */
-//				else if (len == 0)
-//					len = -1;
+				/** XXX: it may be useful, but used on here library only */
+				} else if (len == 0) {
+					errno = EEOF;
+					len = -1;
+				}
 				return len;
 			}
 		}

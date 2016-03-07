@@ -32,23 +32,30 @@ void *callback(sock_handle_t *h, sock_rdwr_t *rdwr)
 		while (read(STDIN_FILENO, pos, sizeof(char)) > 0 && pos < &buf[BUFFER_MAXSIZE] && *pos != '\n')
 			pos++;
 		*pos = '\0';
+		if (pos == buf)
+			continue;
 
 		/** write */
 		if ((len = sock_write(h, buf, pos - buf, 1000)) <= 0) {
-			if (len == 0)
-				continue;
-			fprintf(stderr, "[%p] socket write: %s\n", callback, strerror(errno));
+			fprintf(stderr, "[%p] socket write(%ld): %s\n",callback, len, strerror(errno));
 			return ((void *)0);
 		}
 
 		/** read */
-		if ((len = sock_read(h, buf, BUFFER_MAXSIZE, 1000)) <= 0) {
-			if (len == 0)
-				continue;
-			fprintf(stderr, "[%p] socket read: %s\n", callback, strerror(errno));
+		memset(buf, 0, BUFFER_MAXSIZE);
+		pos = buf;
+		while ((len = sock_read(h, buf, BUFFER_MAXSIZE, 1000)) >= 0) {
+			if (pos + len >= &buf[BUFFER_MAXSIZE -1]) {
+				buf[BUFFER_MAXSIZE - 1] = '\0';
+				break;
+			}
+			pos += len;
+		}
+		if (len < 0 && errno != EEOF) {
+			fprintf(stderr, "[%p] socket read(%ld): %s\n", callback, len, strerror(errno));
 			return ((void *)0);
 		} else {
-			printf("%s", buf);
+			fprintf(stderr, "%s\n", buf);
 		}
 	}
 

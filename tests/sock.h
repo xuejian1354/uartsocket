@@ -41,6 +41,10 @@ enum {
 };
 typedef void *(*sock_callback_t)(sock_handle_t *, sock_rdwr_t []);
 
+#ifndef EEOF
+# define EEOF ((signed)(('E' << 16) | ('O' << 8) | ('F' << 0)))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
