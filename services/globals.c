@@ -16,6 +16,24 @@
 extern "C" {
 #endif
 
+typedef enum
+{
+	LINE_NAME,
+	LINE_MODE,
+	LINE_DEV,
+	LINE_SPEED,
+	LINE_IP,
+	LINE_PORT,
+	LINE_ENABLED,
+	LINE_NONE
+}line_data_type_t;
+
+typedef struct
+{
+	line_data_type_t type;
+	char data[64];
+}line_data_t;
+
 static char current_time[64];
 static char conf_file[128] = {0};
 static int end_flag = 1;
@@ -23,7 +41,7 @@ static int end_flag = 1;
 static void end_handler(int sig);
 
 #ifdef READ_CONF_FILE
-void get_read_line(char *line, int len);
+line_data_t *get_linehandle(char *buf, int len);
 #endif
 
 int get_end()
@@ -64,6 +82,38 @@ int start_params(int argc, char **argv)
 }
 
 #ifdef READ_CONF_FILE
+
+line_data_type_t get_line_data_type_fromstr(char *str)
+{
+	if(!strcmp(str, "mode"))
+	{
+		return LINE_MODE;
+	}
+	else if(!strcmp(str, "dev"))
+	{
+		return LINE_DEV;
+	}
+	else if(!strcmp(str, "speed"))
+	{
+		return LINE_SPEED;
+	}
+	else if(!strcmp(str, "ip"))
+	{
+		return LINE_IP;
+	}
+	else if(!strcmp(str, "port"))
+	{
+		return LINE_PORT;
+	}
+	else if(!strcmp(str, "enabled"))
+	{
+		return LINE_ENABLED;
+	}
+
+	return LINE_NONE;
+}
+
+
 int conf_read_from_file()
 {
 	FILE *fp = NULL;
@@ -71,9 +121,87 @@ int conf_read_from_file()
 
 	if((fp = fopen(conf_file, "r")) != NULL)
 	{
+		trsess_t *t_session = NULL;
+
 		while(fgets(buf, sizeof(buf), fp) != NULL)
 		{
-			get_read_line(buf, strlen(buf));	
+			line_data_t *ldata = get_linehandle(buf, strlen(buf));
+			if(ldata != NULL)
+			{
+				switch(ldata->type)
+				{
+				case LINE_NAME:
+					t_session = calloc(1, sizeof(trsess_t));
+					strcpy(t_session->name, ldata->data);
+					strcpy(t_session->dev, "/dev/ttyS1");
+					t_session->speed = 115200;
+					t_session->tocol = UT_TCP;
+					t_session->mode= UM_MAIN;
+					t_session->ip = inet_addr("0.0.0.0");
+					t_session->port = 8888;
+					t_session->isactive = 1;
+					t_session->timeout = 0;
+					t_session->parent = NULL;
+					t_session->refd = -1;
+					t_session->enabled = 0;
+					t_session->arg = NULL;
+
+					if(add_global_session(t_session) != 0)
+					{
+						free(t_session);
+						t_session = query_global_session(ldata->data);
+					}
+					break;
+
+				case LINE_MODE:
+					if(t_session != NULL)
+					{
+						t_session->mode = get_umode_fromstr(ldata->data);
+					}
+					break;
+
+				case LINE_DEV:
+					if(t_session != NULL)
+					{
+						strcpy(t_session->dev, ldata->data);
+					}
+					break;
+
+				case LINE_SPEED:
+					if(t_session != NULL)
+					{
+						t_session->speed = atoi(ldata->data);
+					}
+					break;
+
+				case LINE_IP:
+					if(t_session != NULL)
+					{
+						t_session->ip = inet_addr(ldata->data);
+					}
+					break;
+
+				case LINE_PORT:
+					if(t_session != NULL)
+					{
+						t_session->port = atoi(ldata->data);
+					}
+					break;
+
+				case LINE_ENABLED:
+					if(t_session != NULL)
+					{
+						t_session->enabled = atoi(ldata->data);
+					}
+					break;
+
+				case LINE_NONE:
+					break;
+				}
+
+				free(ldata);
+			}
+
 			memset(buf, 0, sizeof(buf));
 		}
 
@@ -90,79 +218,113 @@ int conf_read_from_file()
 	return 0;
 }
 
-void get_read_line(char *line, int len)
+line_data_t *get_linehandle(char *buf, int len)
 {
-	int i;
+	int i, s;
 	int is_ignore = 0;
-	int pos_h, pos_t;
-	int isset_h = 0;
 
-#define FIELDS_LEN	3
+	int cmd_ph, cmd_pt, val_ph, val_pt;
+	char p_isset = 0x07;
 
-	char fields[FIELDS_LEN][128] = {0};
-	char flen = 0;
-
-	if(line == NULL)
+	if(buf == NULL || len < 3)
 	{
-		return;
+		return NULL;
+	}
+
+	if(buf[0] == '[')
+	{
+		int x, isFind = 0;
+
+		for(x=0; x<len; x++)
+		{
+			if(buf[x] == ']')
+			{
+				isFind = 1;
+				break;
+			}
+		}
+
+		if(isFind && x>1)
+		{
+			line_data_t *line_data = (line_data_t *)calloc(1, sizeof(line_data_t));
+			line_data->type = LINE_NAME;
+			memcpy(line_data->data, buf+1, x-1);
+			return line_data;
+		}
 	}
 
 	for(i=0; i<len; i++)
 	{	
-		switch(*(line+i))
+		switch(*(buf+i))
 		{
 		case ' ':
-		case '\t':
-		case '\r':
-		case '\n':
-			if(isset_h)
-			{
-				isset_h = 0;
-				if(flen < FIELDS_LEN)
-				{
-					memcpy(fields[flen++], line+pos_h, i-pos_h);
-				}
-			}
 			break;
 
 		case '#':
 			if(!is_ignore)
 			{
-				return;
+				return NULL;
 			}
 
 		default:
 			is_ignore = 1;
-			if(!isset_h)
+			if(p_isset & 0x01)
 			{
-				pos_h = i;
-				isset_h = 1;
+				cmd_ph = i;
+				p_isset &= ~0x01;
 			}
+			else if(p_isset & 0x02)
+			{
+				if(*(buf+i) == '=')
+				{
+					int j;
+					for(j=i-1; j>=cmd_ph; j--)
+					{
+						if(*(buf+j) != ' ')
+						{
+							cmd_pt = j+1;
+							p_isset &= ~0x02;
+							break;
+						}
+					}
+				}
+			}
+			else if(p_isset & 0x04)
+			{
+				val_ph = i;
+				p_isset &= ~0x04;
+			}
+
 			break;
 		}
 	}
 
-	if(flen >= FIELDS_LEN)
+	for(s=len-2; s>=val_ph; s--)
 	{
-		trsess_t *t_session = calloc(1, sizeof(trsess_t));
-		strcpy(t_session->dev, fields[0]);
-		t_session->speed = atoi(fields[1]);
-		t_session->tocol = UT_TCP;
-		t_session->mode= UM_MAIN;
-		t_session->ip = inet_addr("0.0.0.0");
-		t_session->port = atoi(fields[2]);
-		t_session->isactive = 1;
-		t_session->timeout = 0;
-		t_session->parent = NULL;
-		t_session->refd = -1;
-		t_session->arg = NULL;
-
-		set_session_sn(t_session);
-		if(add_global_session(t_session) != 0)
+		if(*(buf+s) != ' ')
 		{
-			free(t_session);
+			val_pt = s+1;
+			break;
 		}
 	}
+
+	if((cmd_ph < cmd_pt)
+		&& (cmd_pt < val_ph)
+		&& (val_ph < val_pt))
+	{
+		char cmd[64] = {0};
+		char val[64] = {0};
+
+		memcpy(cmd, buf+cmd_ph, cmd_pt-cmd_ph);
+		memcpy(val, buf+val_ph, val_pt-val_ph);
+
+		line_data_t *line_data = (line_data_t *)calloc(1, sizeof(line_data_t));
+		line_data->type = get_line_data_type_fromstr(cmd);
+		strcpy(line_data->data, val);
+		return line_data;
+	}
+
+	return NULL;
 }
 #endif
 
@@ -249,6 +411,7 @@ int mach_init()
 
 	while(t_session != NULL)
 	{
+		//trsess_print(t_session);
 		transcomm_thread_create(t_session);
 		t_session = t_session->next;
 	}

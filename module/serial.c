@@ -135,6 +135,11 @@ int serial_init(trsess_t *session)
 		return -1;
 	}
 
+	if(!session->enabled)
+	{
+		return 1;
+	}
+
 	serial_dev_t *m_serial_dev = query_serial_dev(session->dev);
 	if(m_serial_dev == NULL)
 	{
@@ -158,7 +163,7 @@ int serial_init(trsess_t *session)
 			return -2;
 		}
 
-		write(t_serial_dev->serial_fd, "(^_^)", 5);	//just enable serial port, no pratical meaning
+		int ret = write(t_serial_dev->serial_fd, "(^_^)", 5);	//just enable serial port, no pratical meaning
 
 		pthread_t uartRead;
 		pthread_create(&uartRead, NULL, uart_read_handler, (void *)t_serial_dev);
@@ -172,7 +177,7 @@ int serial_init(trsess_t *session)
 	if(ret != 0)
 	{
 		free(t_session);
-		t_session = query_trans_session(m_serial_dev->session, session->sn);
+		t_session = query_trans_session(m_serial_dev->session, session->name);
 	}
 	else
 	{
@@ -233,7 +238,7 @@ void *uart_read_handler(void *p)
 				tcp_conn_t *t_conn = (tcp_conn_t *)m_session->arg;
 				while(t_conn != NULL)
 				{
-					write(t_conn->fd, rbuf, rlen);
+					int ret = write(t_conn->fd, rbuf, rlen);
 					t_conn = t_conn->next;
 				}
 			}
@@ -291,7 +296,7 @@ void *tcpserver_read_handler(void *p)
 		}
 		else
 		{
-			write(((serial_dev_t *)((trsess_t *)m_conn->parent)->parent)->serial_fd, buf, nbytes);
+			int ret = write(((serial_dev_t *)((trsess_t *)m_conn->parent)->parent)->serial_fd, buf, nbytes);
 		}
 	}
 }

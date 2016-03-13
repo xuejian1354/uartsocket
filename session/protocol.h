@@ -28,7 +28,7 @@ typedef enum UMODE
 
 typedef struct TRSESS
 {
-	char sn[32];
+	char name[128];
 	char dev[64];
 	int speed;
 	utocol_t tocol;
@@ -38,6 +38,7 @@ typedef struct TRSESS
 	int isactive;
 	int timeout;
 	int refd;
+	int enabled;
 	void *parent;
 	void *arg;
 	struct TRSESS *next;
@@ -46,18 +47,16 @@ typedef struct TRSESS
 utocol_t get_utocol_fromstr(char* s);
 char *get_utocol_tostr(utocol_t tocol);
 char get_utocol_tochr(utocol_t tocol);
-umode_t get_umode_fromchr(char c);
-char get_umode_tochr(umode_t mode);
-
-void set_session_sn(trsess_t *session);
+umode_t get_umode_fromstr(char *s);
+char *get_umode_tostr(umode_t mode);
 
 trsess_t *get_global_session();
 int add_global_session(trsess_t *session);
-trsess_t *query_global_session(char *sn);
-int del_global_session(char *sn);
+trsess_t *query_global_session(char *name);
+int del_global_session(char *name);
 int add_trans_session(trsess_t **g_session, trsess_t *session);
-trsess_t *query_trans_session(trsess_t *g_session, char *sn);
-int del_trans_session(trsess_t **g_session, char *sn);
+trsess_t *query_trans_session(trsess_t *g_session, char *name);
+int del_trans_session(trsess_t **g_session, char *name);
 void session_free(trsess_t *g_session);
 
 int transcomm_thread_create(trsess_t *session);

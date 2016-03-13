@@ -10,10 +10,6 @@
 
 static trsess_t *g_sess = NULL;
 
-void incode_xtocs(char *dest , unsigned char *src, int len);
-void incode_xtoc16(char *dest, unsigned short src);
-void incode_xtoc32(char *dest, unsigned int src);
-
 utocol_t get_utocol_fromstr(char* s)
 {
 	
@@ -51,43 +47,24 @@ char get_utocol_tochr(utocol_t tocol)
 	}
 }
 
-umode_t get_umode_fromchr(char c)
+umode_t get_umode_fromstr(char *s)
 {
-	switch(c)
-	{
-	case '1':
-		return UM_MAIN;
-
-	default:
+	if(!strcmp(s, "slave"))
 		return UM_SLAVE;
-	}
+	else
+		return UM_MAIN;
 }
 
-char get_umode_tochr(umode_t mode)
+char *get_umode_tostr(umode_t mode)
 {
 	switch(mode)
 	{
-	case UM_MAIN:
-		return '1';
+	case UM_SLAVE:
+		return "slave";
 
 	default:
-		return '2';
+		return "master";
 	}
-}
-
-void set_session_sn(trsess_t *session)
-{
-	char ipxs[12] = {0};
-	char portxs[6] = {0};
-	incode_xtoc32(ipxs, session->ip);
-	incode_xtoc16(portxs, session->port);
-
-	memset(session->sn, 0, sizeof(session->sn));
-	sprintf(session->sn, "%c%c%s%s",
-							get_utocol_tochr(session->tocol),
-							get_umode_tochr(session->mode),
-							ipxs,
-							portxs);
 }
 
 trsess_t *get_global_session()
@@ -100,14 +77,14 @@ int add_global_session(trsess_t *session)
 	return add_trans_session(&g_sess, session);
 }
 
-trsess_t *query_global_session(char *sn)
+trsess_t *query_global_session(char *name)
 {
-	return query_trans_session(g_sess, sn);
+	return query_trans_session(g_sess, name);
 }
 
-int del_global_session(char *sn)
+int del_global_session(char *name)
 {
-	return del_trans_session(&g_sess, sn);
+	return del_trans_session(&g_sess, name);
 }
 
 int add_trans_session(trsess_t **g_session, trsess_t *session)
@@ -127,29 +104,13 @@ int add_trans_session(trsess_t **g_session, trsess_t *session)
 
 	while(t_sess != NULL)
 	{
-		if(strcmp(t_sess->sn, session->sn))
+		if(strcmp(t_sess->name, session->name))
 		{
 			pre_sess = t_sess;
 			t_sess = t_sess->next;
 		}
 		else
 		{
-			strcpy(t_sess->dev, session->dev);
-			t_sess->speed = session->speed;
-			t_sess->tocol = session->tocol;
-			t_sess->mode = session->mode;
-			t_sess->ip = session->ip;
-			t_sess->port = session->port;
-			t_sess->timeout = session->timeout;
-			t_sess->parent = session->parent;
-
-			if(pre_sess != NULL)
-			{
-				pre_sess->next = t_sess->next;
-				t_sess->next = *g_session;
-				*g_session = t_sess;
-			}
-
 			return 1;
 		}
 	}
@@ -160,13 +121,13 @@ int add_trans_session(trsess_t **g_session, trsess_t *session)
 	return 0;
 }
 
-trsess_t *query_trans_session(trsess_t *g_session, char *sn)
+trsess_t *query_trans_session(trsess_t *g_session, char *name)
 {
 	trsess_t *t_sess = g_session;
 
 	while(t_sess != NULL)
 	{
-		if(strcmp(t_sess->sn, sn))
+		if(strcmp(t_sess->name, name))
 		{
 			t_sess = t_sess->next;
 		}
@@ -179,14 +140,14 @@ trsess_t *query_trans_session(trsess_t *g_session, char *sn)
 	return NULL;
 }
 
-int del_trans_session(trsess_t **g_session, char *sn)
+int del_trans_session(trsess_t **g_session, char *name)
 {
 	trsess_t *pre_sess = NULL;
 	trsess_t *t_sess = *g_session;
 
 	while(t_sess != NULL)
 	{
-		if(strcmp(t_sess->sn, sn))
+		if(strcmp(t_sess->name, name))
 		{
 			pre_sess = t_sess;
 			t_sess = t_sess->next;
@@ -252,65 +213,14 @@ void trsess_print(trsess_t *session)
 		return;
 	}
 
-	AI_PRINTF("session %s\n\tdev:\t%s\n\ttocol:\t%s\n\tmode:\t%c\n\tip:\t%04X\n\tport:\t%d\n\tisactive:\t%d\n\ttimeout:\t%d\n\n",
-				session->sn,
+	AI_PRINTF("session [%s]\n\tdev:\t%s\n\ttocol:\t%s\n\tmode:\t%s\n\tip:\t%04X\n\tport:\t%d\n\tisactive:\t%d\n\ttimeout:\t%d\n\tenabled:\t%d\n\n",
+				session->name,
 				session->dev,
 				get_utocol_tostr(session->tocol),
-				get_umode_tochr(session->mode),
+				get_umode_tostr(session->mode),
 				session->ip,
 				session->port,
 				session->isactive,
-				session->timeout);
-}
-
-void incode_xtocs(char *dest , unsigned char *src, int len)
-{
-    int i, temp;
-	if(len<1 || dest==NULL || src==NULL)
-	{
-		return;
-	}
-
-	for(i=0; i<len; i++)
-	{
-		temp = (*(src+i)>>4);
-		if(temp < 0xA)
-		{
-			dest[(i<<1)] = temp + '0';	
-		}
-		else
-		{
-			dest[(i<<1)] = temp - 0xA + 'A';	
-		}
-		
-		temp = (*(src+i)&0x0F);
-		if(temp < 0xA)
-		{
-			dest[(i<<1)+1] = temp + '0';	
-		}
-		else
-		{
-			dest[(i<<1)+1] = temp - 0xA + 'A';	
-		}
-	}
-}
-
-
-void incode_xtoc16(char *dest, unsigned short src)
-{
-	unsigned char val[2];
-	val[0] = (src>>8);
-	val[1] = (src&0xFF);
-	incode_xtocs(dest, val, 2);
-}
-
-void incode_xtoc32(char *dest, unsigned int src)
-{
-	unsigned char val[4];
-	val[0] = ((src>>24)&0xFF);
-	val[1] = ((src>>16)&0xFF);
-	val[2] = ((src>>8)&0xFF);
-	val[3] = (src&0xFF);
-	
-	incode_xtocs(dest, val, 4);
+				session->timeout,
+				session->enabled);
 }
