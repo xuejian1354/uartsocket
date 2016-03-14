@@ -205,6 +205,7 @@ int transcomm_thread_create(trsess_t *session)
 	}
 
 	int ret = serial_init(session);
+
 	switch(ret)
 	{
 	case 0:

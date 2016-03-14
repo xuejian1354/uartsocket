@@ -205,7 +205,22 @@ int serial_init(trsess_t *session)
 				pthread_create(&reserAccept, NULL, tcpserver_accept_handler, (void *)t_session);
 			}
 			else if(t_session->mode == UM_SLAVE)
-			{}
+			{
+				struct sockaddr_in reclient_addr;
+				reclient_addr.sin_family = PF_INET;
+				reclient_addr.sin_port = htons(t_session->port);
+				reclient_addr.sin_addr.s_addr = t_session->ip;
+
+				if ((t_session->refd = socket(PF_INET, SOCK_STREAM, 0)) < 0
+					|| connect(t_session->refd, (struct sockaddr *)&reclient_addr, sizeof(reclient_addr)) < 0)
+				{
+					perror("recli socket fail");
+					return -4;
+				}
+
+				pthread_t recliAccept;
+				pthread_create(&recliAccept, NULL, tcpclient_read_handler, (void *)t_session);
+			}
 		}
 		else if(t_session->tocol == UT_UDP)
 		{
@@ -222,7 +237,7 @@ int serial_init(trsess_t *session)
 void *uart_read_handler(void *p)
 {
 	unsigned char rbuf[2048];
-    int rlen;
+	int rlen;
 
 	serial_dev_t *m_serial_dev = (serial_dev_t *)p;
 	
@@ -241,6 +256,10 @@ void *uart_read_handler(void *p)
 					int ret = write(t_conn->fd, rbuf, rlen);
 					t_conn = t_conn->next;
 				}
+			}
+			else if(m_session->tocol == UT_TCP && m_session->mode == UM_SLAVE)
+			{
+				int ret = write(m_session->refd, rbuf, rlen);
 			}
 
 			m_session = m_session->next;
@@ -302,7 +321,32 @@ void *tcpserver_read_handler(void *p)
 }
 
 void *tcpclient_read_handler(void *p)
-{}
+{
+	trsess_t *m_session = (trsess_t *)p;
+	if(m_session == NULL)
+	{
+		return NULL;
+	}
+
+	int nbytes;
+	char buf[2048];
+
+	int isStart = 1;
+
+	while(isStart)
+	{
+		memset(buf, 0, sizeof(buf));
+		if ((nbytes = read(m_session->refd, buf, sizeof(buf))) <= 0)
+		{
+			close(m_session->refd);
+			isStart = 0;
+		}
+		else
+		{
+			int ret = write(((serial_dev_t *)(m_session->parent))->serial_fd, buf, nbytes);
+		}
+	}
+}
 
 void *udpserver_read_handler(void *p)
 {}
