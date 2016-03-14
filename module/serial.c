@@ -185,7 +185,7 @@ int serial_init(trsess_t *session)
 
 		if(t_session->tocol == UT_TCP)
 		{
-			if(t_session->mode == UM_MAIN)
+			if(t_session->mode == UM_MASTER)
 			{
 				struct sockaddr_in reserver_addr;
 				reserver_addr.sin_family = PF_INET;
@@ -209,7 +209,7 @@ int serial_init(trsess_t *session)
 		}
 		else if(t_session->tocol == UT_UDP)
 		{
-			if(t_session->mode == UM_MAIN)
+			if(t_session->mode == UM_MASTER)
 			{}
 			else if(t_session->mode == UM_SLAVE)
 			{}
@@ -233,7 +233,7 @@ void *uart_read_handler(void *p)
 		trsess_t *m_session = m_serial_dev->session;
 		while(m_session != NULL)
 		{
-			if(m_session->tocol == UT_TCP && m_session->mode == UM_MAIN)
+			if(m_session->tocol == UT_TCP && m_session->mode == UM_MASTER)
 			{
 				tcp_conn_t *t_conn = (tcp_conn_t *)m_session->arg;
 				while(t_conn != NULL)

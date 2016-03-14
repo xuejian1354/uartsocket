@@ -18,6 +18,16 @@ st(    \
 	printf(format, ##args);    \
 )
 
+#define AO_PRINTF(format, args...)  \
+st(  \
+	FILE *fp = NULL;    \
+    if((fp = fopen(STATUS_FILE, "a+")) != NULL)   \
+    {   \
+        fprintf(fp, format, ##args);  \
+        fclose(fp); \
+    }   \
+)
+
 #ifdef __cplusplus
 }
 #endif

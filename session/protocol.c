@@ -6,6 +6,8 @@
  */
 
 #include "protocol.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <module/netlist.h>
 
 static trsess_t *g_sess = NULL;
@@ -52,7 +54,7 @@ umode_t get_umode_fromstr(char *s)
 	if(!strcmp(s, "slave"))
 		return UM_SLAVE;
 	else
-		return UM_MAIN;
+		return UM_MASTER;
 }
 
 char *get_umode_tostr(umode_t mode)
@@ -180,7 +182,7 @@ void session_free(trsess_t *g_session)
 		trsess_t *t_session = m_session;
 		m_session = m_session->next;
 
-		if(t_session->tocol == UT_TCP && t_session->mode == UM_MAIN)
+		if(t_session->tocol == UT_TCP && t_session->mode == UM_MASTER)
 		{
 			tcp_conn_t *t_conn = (tcp_conn_t *)t_session->arg;
 			while(t_conn != NULL)
@@ -202,7 +204,36 @@ int transcomm_thread_create(trsess_t *session)
 		return -1;
 	}
 
-	serial_init(session);
+	int ret = serial_init(session);
+	switch(ret)
+	{
+	case 0:
+		AO_PRINTF("[%s]\n    status: OK\n\n", session->name);
+		break;
+
+	case 1:
+		AO_PRINTF("[%s]\n    status: disabled\n\n", session->name);
+		break;
+
+	case -2:
+		AO_PRINTF("[%s]\n    status: open \"%s\" error\n\n", session->name, session->dev);
+		break;
+
+	case -3:
+		AO_PRINTF("[%s]\n    status: bind server %d error\n\n", session->name, session->port);
+		break;
+
+	case -4:
+	{
+		struct in_addr maddr;
+		maddr.s_addr = session->ip;
+		AO_PRINTF("[%s]\n    status: client connect %s:%d error\n\n", session->name, inet_ntoa(maddr), session->port);
+	}
+		break;
+
+	default:
+		break;
+	}
 }
 
 void trsess_print(trsess_t *session)

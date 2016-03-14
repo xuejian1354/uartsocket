@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 #define CONF_FILE	"/etc/uartsocket.conf"
+#define STATUS_FILE	"/tmp/uartsocket_status.dat"
 
 #ifdef __cplusplus
 }

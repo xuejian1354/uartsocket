@@ -22,7 +22,7 @@ typedef enum UTOCOL
 
 typedef enum UMODE
 {
-	UM_MAIN,
+	UM_MASTER,
 	UM_SLAVE,
 }umode_t;
 

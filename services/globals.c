@@ -136,7 +136,7 @@ int conf_read_from_file()
 					strcpy(t_session->dev, "/dev/ttyS1");
 					t_session->speed = 115200;
 					t_session->tocol = UT_TCP;
-					t_session->mode= UM_MAIN;
+					t_session->mode= UM_MASTER;
 					t_session->ip = inet_addr("0.0.0.0");
 					t_session->port = 8888;
 					t_session->isactive = 1;
@@ -406,6 +406,8 @@ int get_daemon_cmdline()
 
 int mach_init()
 {
+	system("rm -f /tmp/uartsocket_status.dat");
+
 	trsess_t *g_session = get_global_session();
 	trsess_t *t_session = g_session;
 
