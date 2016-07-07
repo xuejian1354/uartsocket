@@ -17,7 +17,7 @@ extern "C" {
 serial_dev_t *g_serial_dev = NULL;
 
 static int serial_open(char *dev);
-static int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity);
+static int set_serial_params(int fd, uint32 speed, uint8 databits, uint8 stopbits, uint8 parity);
 
 static void *uart_read_handler(void *p);
 static void *tcpserver_accept_handler(void *p);
@@ -157,7 +157,7 @@ int serial_init(trsess_t *session)
 		m_serial_dev = t_serial_dev;
 
 		if ((t_serial_dev->serial_fd=serial_open(session->dev)) < 0
-			|| set_serial_params(t_serial_dev->serial_fd, t_serial_dev->speed, 8, 1, 0) < 0)
+			|| set_serial_params(t_serial_dev->serial_fd, t_serial_dev->speed, 8, 2, 0) < 0)
 		{
 			del_serial_dev(session->dev);
 			return -2;
@@ -373,7 +373,7 @@ int serial_open(char *dev)
     return fd;
 }
 
-int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 parity)
+int set_serial_params(int fd, uint32 speed, uint8 databits, uint8 stopbits, uint8 parity)
 {
     int iSpeed = 0;
     struct termios options;
@@ -418,7 +418,7 @@ int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 
 
     //  Set DataBits
     options.c_cflag &= ~CSIZE;
-    switch(databit) {
+    switch(databits) {
         case 5:
           options.c_cflag |= CS5;
           break;
@@ -456,11 +456,11 @@ int set_serial_params(int fd, uint32 speed, uint8 databit, uint8 stopbit, uint8 
     }
 
     // Set Stop Bits
-    switch(stopbit) {
-        case 0:
+    switch(stopbits) {
+        case 1:
             options.c_cflag &= ~CSTOPB;
             break;
-        case 1:
+        case 2:
             options.c_cflag |= CSTOPB;
             break;
         default:
