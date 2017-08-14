@@ -1,6 +1,6 @@
 ifneq ($(WHOLE_BUILD),1)
 ifneq ("$(origin prefix)", "command line")
-  prefix := mipsel-openwrt-linux-
+  prefix :=
 endif
 
 ifneq ("$(origin dir)", "command line")

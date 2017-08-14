@@ -5,12 +5,13 @@ $(shell find -name "*[.c][ch]" | xargs chmod -x)
 $(shell find -name "*_config" | xargs chmod -x)
 
 include $(TOPDIR)/config.mk
+include $(TOPDIR)/lib/library.mk
 
 TARGET_NAME:=uartsocket
 TARGET:=$(addprefix $(DIR),$(TARGET_NAME))
 export TARGET
 
-INCLUDE +=-I$(TOPDIR)/include
+INCLUDE +=-I$(TOPDIR)/include $(patsubst %,-I%,$(shell find -L $(TOPDIR)/lib -type d))
 ifneq ($(DIR),)
 INCLUDE += -I$(TOPDIR)/$(DIR)include
 endif
@@ -53,7 +54,7 @@ all:$(TARGET)
 
 include $(TOPDIR)/include/include.mk
 
-$(TARGET):$(inc_deps) $(inc_dirs_deps) target_comshow $(TARGET_OBJS)
+$(TARGET):$(inc_deps) $(inc_dirs_deps) target_comshow $(TARGET_OBJS) libs
 	$(call echocmd,TAR,$@, \
 	  $(TARGET_CC) $(TARGET_DMACRO) $(INCLUDE) $(LDPATH) $(TARGET_LDPATH) -O2 -o $@ $(TARGET_OBJS) $(LDFLAGS) $(TARGET_LDFLAG))
 	@$(TARGET_STRIP) $@
@@ -75,6 +76,9 @@ target_comshow:
 
 alls:all
 	make -C tests
+
+libs:
+	@make -C $(TOPDIR)/lib $(patsubst %,$(TOPDIR)/$(DIR)lib/%.a,$(patsubst %.a,%,$(LDLIBS)))
 
 clean:
 	(find -name "*.[oa]" | xargs $(RM)) && $(RM) $(TARGET)
