@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <module/netlist.h>
+#include <services/datahandler.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -248,20 +249,44 @@ void *uart_read_handler(void *p)
 		trsess_t *m_session = m_serial_dev->session;
 		while(m_session != NULL)
 		{
-			if(m_session->tocol == UT_TCP && m_session->mode == UM_MASTER)
+			trbuf_t buffer;
+			buffer.data = rbuf;
+			buffer.len = rlen;
+
+			trbuf_t *senbuf = NULL;
+			dhandler_t *phandler = get_datahandler(m_session->haname);
+			if(phandler)
 			{
-				tcp_conn_t *t_conn = (tcp_conn_t *)m_session->arg;
-				while(t_conn != NULL)
-				{
-					int ret = write(t_conn->fd, rbuf, rlen);
-					t_conn = t_conn->next;
-				}
+				senbuf = phandler->sendcall(&buffer);
 			}
-			else if(m_session->tocol == UT_TCP && m_session->mode == UM_SLAVE)
+			else
 			{
-				int ret = write(m_session->refd, rbuf, rlen);
+				senbuf = calloc(1, sizeof(trbuf_t));
+				senbuf->len = rlen;
+				senbuf->data = malloc(rlen);
+				memcpy(senbuf->data, rbuf, rlen);
 			}
 
+			if(senbuf)
+			{
+				if(m_session->tocol == UT_TCP && m_session->mode == UM_MASTER)
+				{
+					tcp_conn_t *t_conn = (tcp_conn_t *)m_session->arg;
+					while(t_conn != NULL)
+					{
+						int ret = write(t_conn->fd, senbuf->data, senbuf->len);
+						t_conn = t_conn->next;
+					}
+				}
+				else if(m_session->tocol == UT_TCP && m_session->mode == UM_SLAVE)
+				{
+					int ret = write(m_session->refd, senbuf->data, senbuf->len);
+				}
+
+				free(senbuf->data);
+			}
+
+			free(senbuf);
 			m_session = m_session->next;
 		}
     }
@@ -302,6 +327,7 @@ void *tcpserver_read_handler(void *p)
 	char buf[2048];
 
 	tcp_conn_t *m_conn = (tcp_conn_t *)p;
+	trsess_t *m_session = (trsess_t *)m_conn->parent;
 	int isStart = 1;
 
 	while(isStart)
@@ -315,7 +341,31 @@ void *tcpserver_read_handler(void *p)
 		}
 		else
 		{
-			int ret = write(((serial_dev_t *)((trsess_t *)m_conn->parent)->parent)->serial_fd, buf, nbytes);
+			trbuf_t buffer;
+			buffer.data = buf;
+			buffer.len = nbytes;
+
+			trbuf_t *recbuf = NULL;
+			dhandler_t *phandler = get_datahandler(m_session->haname);
+			if(phandler)
+			{
+				recbuf = phandler->recvcall(&buffer);
+			}
+			else
+			{
+				recbuf = calloc(1, sizeof(trbuf_t));
+				recbuf->len = nbytes;
+				recbuf->data = malloc(nbytes);
+				memcpy(recbuf->data, buf, nbytes);
+			}
+
+			if(recbuf)
+			{
+				write(((serial_dev_t *)m_session->parent)->serial_fd, recbuf->data, recbuf->len);
+				free(recbuf->data);
+			}
+
+			free(recbuf);
 		}
 	}
 }
@@ -343,7 +393,31 @@ void *tcpclient_read_handler(void *p)
 		}
 		else
 		{
-			int ret = write(((serial_dev_t *)(m_session->parent))->serial_fd, buf, nbytes);
+			trbuf_t buffer;
+			buffer.data = buf;
+			buffer.len = nbytes;
+
+			trbuf_t *recbuf = NULL;
+			dhandler_t *phandler = get_datahandler(m_session->haname);
+			if(phandler)
+			{
+				recbuf = phandler->recvcall(&buffer);
+			}
+			else
+			{
+				recbuf = calloc(1, sizeof(trbuf_t));
+				recbuf->len = nbytes;
+				recbuf->data = malloc(nbytes);
+				memcpy(recbuf->data, buf, nbytes);
+			}
+
+			if(recbuf)
+			{
+				write(((serial_dev_t *)(m_session->parent))->serial_fd, recbuf->data, recbuf->len);
+				free(recbuf->data);
+			}
+
+			free(recbuf);
 		}
 	}
 }

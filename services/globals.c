@@ -24,6 +24,7 @@ typedef enum
 	LINE_SPEED,
 	LINE_IP,
 	LINE_PORT,
+	LINE_HANDLER,
 	LINE_ENABLED,
 	LINE_NONE
 }line_data_type_t;
@@ -105,6 +106,10 @@ line_data_type_t get_line_data_type_fromstr(char *str)
 	{
 		return LINE_PORT;
 	}
+	else if(!strcmp(str, "datahandler"))
+	{
+		return LINE_HANDLER;
+	}
 	else if(!strcmp(str, "enabled"))
 	{
 		return LINE_ENABLED;
@@ -185,6 +190,13 @@ int conf_read_from_file()
 					if(t_session != NULL)
 					{
 						t_session->port = atoi(ldata->data);
+					}
+					break;
+
+				case LINE_HANDLER:
+					if(t_session != NULL)
+					{
+						strcpy(t_session->haname, ldata->data);
 					}
 					break;
 

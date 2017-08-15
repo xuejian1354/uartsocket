@@ -41,6 +41,7 @@ typedef struct TRSESS
 	int enabled;
 	void *parent;
 	void *arg;
+	char haname[64];
 	struct TRSESS *next;
 }trsess_t;
 

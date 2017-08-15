@@ -1,1 +1,1 @@
-TARGET_SRCS :=globals.c
+TARGET_SRCS :=globals.c datahandler.c
