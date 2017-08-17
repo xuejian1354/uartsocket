@@ -335,7 +335,7 @@ void *tcpserver_read_handler(void *p)
 		memset(buf, 0, sizeof(buf));
 	   	if ((nbytes = recv(m_conn->fd, buf, sizeof(buf), 0)) <= 0)
 	   	{
-	      	close(m_conn->fd);
+	      		close(m_conn->fd);
 			delfrom_tcpconn_list((tcp_conn_t **)&((trsess_t *)m_conn->parent)->arg, m_conn->fd);
 			isStart = 0;
 		}
@@ -344,12 +344,21 @@ void *tcpserver_read_handler(void *p)
 			trbuf_t buffer;
 			buffer.data = buf;
 			buffer.len = nbytes;
-
 			trbuf_t *recbuf = NULL;
 			dhandler_t *phandler = get_datahandler(m_session->haname);
 			if(phandler)
 			{
 				recbuf = phandler->recvcall(&buffer);
+
+				/*-----------------------------------------*/
+				trbuf_t *senbuf = phandler->sendcall(recbuf);
+				if(senbuf)
+				{
+					write(m_conn->fd, senbuf->data, senbuf->len);
+					free(senbuf->data);
+				}
+				free(senbuf);
+				/*-----------------------------------------*/
 			}
 			else
 			{
@@ -361,6 +370,7 @@ void *tcpserver_read_handler(void *p)
 
 			if(recbuf)
 			{
+
 				write(((serial_dev_t *)m_session->parent)->serial_fd, recbuf->data, recbuf->len);
 				free(recbuf->data);
 			}

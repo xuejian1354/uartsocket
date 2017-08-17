@@ -1,4 +1,4 @@
 TARGET_DMACRO +=-DTRANS_TCP_SERVER
 
 TARGET_LDPATH =
-TARGET_LDFLAG =-lcjson -lhttp-parser
+TARGET_LDFLAG =-lcjson -lhttp-parser -lm
