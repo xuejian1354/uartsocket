@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <session/protocol.h>
 #include <module/serial.h>
+#include <services/datahandler.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -361,6 +362,7 @@ void end_handler(int sig)
 
 	AI_PRINTF("\n");
 
+	devdata_release();
 	session_free(get_global_session());
 	serial_dev_free();
 
@@ -420,13 +422,18 @@ int mach_init()
 {
 	system("rm -f /tmp/uartsocket_status.dat");
 
+	devdata_init();
+
 	trsess_t *g_session = get_global_session();
 	trsess_t *t_session = g_session;
 
 	while(t_session != NULL)
 	{
 		//trsess_print(t_session);
-		transcomm_thread_create(t_session);
+		if(transcomm_thread_create(t_session)<0)
+		{
+			return -1;
+		}
 		t_session = t_session->next;
 	}
 

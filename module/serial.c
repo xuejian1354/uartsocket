@@ -303,6 +303,7 @@ void *tcpserver_accept_handler(void *p)
 	while(1)
 	{
 		rw = accept(m_session->refd, (struct sockaddr *)&client_addr, &len);
+		//printf("New Connection, fd=%d\n", rw);
 
 		tcp_conn_t *t_conn = calloc(1, sizeof(tcp_conn_t));
 		t_conn->fd = rw;
@@ -335,7 +336,8 @@ void *tcpserver_read_handler(void *p)
 		memset(buf, 0, sizeof(buf));
 	   	if ((nbytes = recv(m_conn->fd, buf, sizeof(buf), 0)) <= 0)
 	   	{
-	      		close(m_conn->fd);
+			close(m_conn->fd);
+			//printf("Connection close, fd=%d\n", m_conn->fd);
 			delfrom_tcpconn_list((tcp_conn_t **)&((trsess_t *)m_conn->parent)->arg, m_conn->fd);
 			isStart = 0;
 		}
@@ -349,8 +351,6 @@ void *tcpserver_read_handler(void *p)
 			if(phandler)
 			{
 				recbuf = phandler->recvcall(&buffer);
-
-				/*-----------------------------------------*/
 				trbuf_t *senbuf = phandler->sendcall(recbuf);
 				if(senbuf)
 				{
@@ -358,7 +358,6 @@ void *tcpserver_read_handler(void *p)
 					free(senbuf->data);
 				}
 				free(senbuf);
-				/*-----------------------------------------*/
 			}
 			else
 			{
@@ -370,7 +369,6 @@ void *tcpserver_read_handler(void *p)
 
 			if(recbuf)
 			{
-
 				write(((serial_dev_t *)m_session->parent)->serial_fd, recbuf->data, recbuf->len);
 				free(recbuf->data);
 			}

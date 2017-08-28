@@ -235,6 +235,8 @@ int transcomm_thread_create(trsess_t *session)
 	default:
 		break;
 	}
+
+	return ret;
 }
 
 void trsess_print(trsess_t *session)

@@ -1,7 +1,8 @@
 TOPDIR:=$(CURDIR)
 export TOPDIR
 
-$(shell find -name "*[.c][ch]" | xargs chmod -x)
+$(shell find -name "*.c" | xargs chmod -x)
+$(shell find -name "*.h" | xargs chmod -x)
 $(shell find -name "*_config" | xargs chmod -x)
 
 include $(TOPDIR)/config.mk

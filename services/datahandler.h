@@ -27,6 +27,9 @@ typedef struct DHANDLER
   trbuf_t *(*sendcall)(trbuf_t *buf);
 } dhandler_t;
 
+void devdata_init();
+void devdata_release();
+
 dhandler_t *get_datahandler(char *name);
 
 
