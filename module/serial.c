@@ -187,12 +187,14 @@ int serial_init(trsess_t *session)
 		{
 			if(t_session->mode == UM_MASTER)
 			{
+				int opt = 1;
 				struct sockaddr_in reserver_addr;
 				reserver_addr.sin_family = PF_INET;
 				reserver_addr.sin_port = htons(t_session->port);
 				reserver_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 				if ((t_session->refd = socket(PF_INET, SOCK_STREAM, 0)) < 0
+					|| setsockopt(t_session->refd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0
 					|| bind(t_session->refd, (struct sockaddr *)&reserver_addr, sizeof(struct sockaddr)) < 0)
 				{
 					perror("reser socket fail");
